@@ -1,34 +1,104 @@
+import pandas as pd
+
 from src.loader import load_consumption_csv
 from src.validators import validate_15min_intervals
 from src.period_resolver import resolve_gdmth_peninsular_period
+from src.billing import calculate_gdmth_bill
 from src.aggregations import (
     aggregate_monthly_energy,
     aggregate_monthly_totals,
 )
+from src.demand import (
+    monthly_max_demand,
+    monthly_max_demand_punta,
+    demand_base_facturable
+)
+
 
 
 def run_engine():
     print("⚙️ CFE GDMTH Engine v1 - resolving periods")
 
+    # =========================
+    # 1️⃣ Cargar dataset
+    # =========================
     df = load_consumption_csv("data/datos-consumo-electrico-01_15min.csv")
 
+    # =========================
+    # 2️⃣ Validaciones básicas
+    # =========================
     validate_15min_intervals(df, "datetime")
 
-    df["period"] = df["datetime"].apply(
-        resolve_gdmth_peninsular_period
-    )
+    # =========================
+    # 3️⃣ Resolver periodos GDMTH
+    # =========================
+    df = resolve_gdmth_peninsular_period(df, "datetime")
 
-    print("✅ Periodos tarifarios asignados")
+    # =====================
+    # DEMANDA MEDIDA (kW)
+    # =====================
+    df["demand_kw"] = df["kWh"] * 4
+
+
+    print("period")
     print(df["period"].value_counts())
 
-    # 👇👇👇 AQUÍ VA LA AGREGACIÓN 👇👇👇
-    energy_by_period = aggregate_monthly_energy(df)
-    monthly_totals = aggregate_monthly_totals(df)
+    # =========================
+    # 4️⃣ Columnas estructurales BASE
+    # (estas NO deben vivir en agregations)
+    # =========================
+    df["month"] = df["datetime"].dt.to_period("M").astype(str)
+
+    # =========================
+    # 5️⃣ Agregaciones de energía
+    # =========================
+    monthly_period_kwh = aggregate_monthly_energy(df)
+    monthly_total_kwh = aggregate_monthly_totals(df)
 
     print("\n📊 Consumo mensual por periodo:")
-    print(energy_by_period)
+    print(monthly_period_kwh)
 
     print("\n📊 Consumo mensual total:")
-    print(monthly_totals)
+    print(monthly_total_kwh)
 
-    print("🚀 Dataset listo para cálculo energético")
+    # =========================
+    # 6️⃣ Demanda máxima (15 min)
+    # =========================
+    max_demand = monthly_max_demand(df)
+    max_demand_punta = monthly_max_demand_punta(df)
+    base_facturable = demand_base_facturable(df)
+
+    TARIFFS_GDMTH = {
+    "energy": {
+        "base": 0.85,
+        "intermedia": 1.20,
+        "punta": 3.50
+    },
+    "demand": {
+        "base": 420
+    }
+    }
+    bill = calculate_gdmth_bill(
+    energy_by_period=monthly_period_kwh,
+    total_energy=monthly_total_kwh,
+    demand_base=base_facturable,
+    tariffs=TARIFFS_GDMTH
+)
+
+    print("\n💵 Factura mensual estimada CFE GDMTH:")
+    print(bill)
+
+    print("\n🏭 Demanda base facturable (kW):")
+    print(base_facturable)
+
+    print("\n⚡ Demanda máxima mensual en punta (kW):")
+    print(max_demand_punta)
+
+    print("\n⚡ Demanda máxima mensual (kW):")
+    print(max_demand)
+
+    print("\n🚀 Dataset listo para cálculo energético")
+
+
+if __name__ == "__main__":
+    run_engine()

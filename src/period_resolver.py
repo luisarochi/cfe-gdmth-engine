@@ -1,39 +1,53 @@
-from datetime import datetime
+import pandas as pd
 
 
-def resolve_gdmth_peninsular_period(dt: datetime) -> str:
+def resolve_gdmth_peninsular_period(df, datetime_col="datetime"):
     """
-    Clasifica un datetime en Base / Intermedia / Punta
-    para tarifa GDMTH región Peninsular (invierno).
+    Asigna periodo tarifario (base / intermedia / punta)
+    para región Peninsular bajo esquema GDMTH.
     """
+    def resolve_period(dt):
+        hour = dt.hour
+        weekday = dt.weekday()  # 0=lunes, 6=domingo
+        month = dt.month
 
-    hour = dt.hour
-    weekday = dt.weekday()  # 0=lunes, 6=domingo
+        # Temporada invierno: nov–mar (simplificado para v1)
+        is_winter = month in [11, 12, 1, 2, 3]
 
-    # Domingo
-    if weekday == 6:
-        if hour < 18:
-            return "base"
+        # Domingo
+        if weekday == 6:
+            return "base" if hour < 18 else "intermedia"
+
+        # Lunes a viernes
+        if weekday < 5:
+            if is_winter:
+                if 0 <= hour < 6 or hour >= 22:
+                    return "base"
+                elif 6 <= hour < 18:
+                    return "intermedia"
+                else:
+                    return "punta"
+            else:
+                if 0 <= hour < 6 or hour >= 22:
+                    return "base"
+                elif 6 <= hour < 20:
+                    return "intermedia"
+                else:
+                    return "punta"
+
+        # Sábado
+        if is_winter:
+            if 0 <= hour < 8 or hour >= 21:
+                return "base"
+            elif 8 <= hour < 19:
+                return "intermedia"
+            else:
+                return "punta"
         else:
-            return "punta"
+            if 0 <= hour < 7:
+                return "base"
+            else:
+                return "intermedia"
 
-    # Sábado
-    if weekday == 5:
-        if hour < 8:
-            return "base"
-        elif hour < 19:
-            return "intermedia"
-        elif hour < 21:
-            return "punta"
-        else:
-            return "intermedia"
-
-    # Lunes a viernes
-    if hour < 6:
-        return "base"
-    elif hour < 18:
-        return "intermedia"
-    elif hour < 22:
-        return "punta"
-    else:
-        return "base"
+    df["period"] = df[datetime_col].apply(resolve_period)
+    return df
