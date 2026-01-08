@@ -55,11 +55,6 @@ def run_engine():
     monthly_period_kwh = aggregate_monthly_energy(df)
     monthly_total_kwh = aggregate_monthly_totals(df)
 
-    print("\n📊 Consumo mensual por periodo:")
-    print(monthly_period_kwh)
-
-    print("\n📊 Consumo mensual total:")
-    print(monthly_total_kwh)
 
     # =========================
     # 6️⃣ Demanda máxima (15 min)
@@ -84,12 +79,22 @@ def run_engine():
     demand_base=base_facturable,
     tariffs=TARIFFS_GDMTH
 )
+    print("\n📊 Consumo mensual por periodo:")
+    print(monthly_period_kwh)
 
-    print("\n💵 Factura mensual estimada CFE GDMTH:")
-    print(bill)
+    monthly_period_kwh.to_csv(
+    "outputs/monthly_energy_by_period.csv",
+    index=False
+)
 
-    print("\n🏭 Demanda base facturable (kW):")
-    print(base_facturable)
+    print("\n📊 Consumo mensual total:")
+    print(monthly_total_kwh)
+
+    monthly_total_kwh.to_csv(
+    "outputs/monthly_totals.csv",
+    index=False
+)
+
 
     print("\n⚡ Demanda máxima mensual en punta (kW):")
     print(max_demand_punta)
@@ -97,7 +102,17 @@ def run_engine():
     print("\n⚡ Demanda máxima mensual (kW):")
     print(max_demand)
 
-    print("\n🚀 Dataset listo para cálculo energético")
+    print("\n💵 Factura mensual estimada CFE GDMTH:")
+    print(bill)
+
+    bill.to_csv(
+    "outputs/monthly_invoice.csv",
+    index=False
+)
+
+
+    print("\n🏭 Demanda base facturable (kW):")
+    print(base_facturable)
 
 
 if __name__ == "__main__":
