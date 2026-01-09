@@ -54,6 +54,8 @@ def monthly_max_demand_punta(df):
         .reset_index()
     )
 
+    return result
+
 def rolling_12m_max_demand(df):
     """
     Máxima demanda móvil 12 meses (kW).
@@ -86,4 +88,3 @@ def demand_base_facturable(df):
     ].max(axis=1)
 
     return result[["month", "base_facturable_kw"]]
-

@@ -1,25 +1,48 @@
 import pandas as pd
+import pytz
+
+CANCUN_TZ = "America/Cancun"
+EXPECTED_INTERVAL_MINUTES = 15
 
 
 def load_consumption_csv(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    df = pd.read_csv(
+        path,
+        header=None,
+        names=["timestamp_utc", "kwh"]
+    )
 
-    # Renombrar columnas al esquema interno del motor
-    df.columns = ["datetime", "kWh"]
+    df["timestamp_utc"] = pd.to_datetime(df["timestamp_utc"], utc=True)
 
-    # Parsear datetime
-    df["datetime"] = pd.to_datetime(df["datetime"], utc=True)
+    cancun_tz = pytz.timezone(CANCUN_TZ)
+    df["timestamp_local"] = df["timestamp_utc"].dt.tz_convert(cancun_tz)
 
-    # Ordenar por tiempo
-    df = df.sort_values("datetime")
+    # ==========================
+    # 1️⃣ VALIDAR INTERVALOS (ANTES DE LIMPIAR)
+    # ==========================
+    df = df.sort_values("timestamp_utc")
+    diffs = df["timestamp_utc"].diff().dropna()
+    expected = pd.Timedelta(minutes=EXPECTED_INTERVAL_MINUTES)
 
-    # Manejo de valores nulos de consumo
-    null_count = df["kWh"].isnull().sum()
-    if null_count > 0:
-        print(
-            f"⚠️ {null_count} intervalos con consumo nulo detectados. "
-            "Se asumen como 0 kWh."
+    if not (diffs == expected).all():
+        raise ValueError(
+            "El CSV no contiene intervalos consistentes de 15 minutos"
         )
-        df["kWh"] = df["kWh"].fillna(0)
+
+    # ==========================
+    # 2️⃣ LIMPIEZA DE CONSUMO
+    # ==========================
+    df["kwh"] = pd.to_numeric(df["kwh"], errors="coerce")
+
+    invalid_rows = df[df["kwh"].isnull()]
+    if not invalid_rows.empty:
+        print("⚠️ Filas con consumo inválido detectadas:")
+        print(invalid_rows.head(10))
+        print(f"⚠️ Total de filas inválidas: {len(invalid_rows)}")
+
+    df = df.dropna(subset=["kwh"])
+
+    if (df["kwh"] < 0).any():
+        raise ValueError("El CSV contiene valores negativos de consumo")
 
     return df
