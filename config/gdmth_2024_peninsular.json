@@ -1,0 +1,11 @@
+{
+    "energy": {
+      "base": 0.85,
+      "intermedia": 1.20,
+      "punta": 3.50
+    },
+    "demand": {
+      "base": 420
+    },
+    "fixed_charge": 0
+  }

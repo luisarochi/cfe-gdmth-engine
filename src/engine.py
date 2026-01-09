@@ -64,21 +64,14 @@ def run_engine():
     max_demand_punta = monthly_max_demand_punta(df)
     base_facturable = demand_base_facturable(df)
 
-    TARIFFS_GDMTH = {
-    "energy": {
-        "base": 0.85,
-        "intermedia": 1.20,
-        "punta": 3.50
-    },
-    "demand": {
-        "base": 420
-    }
-    }
+    with open("config/gdmth_2024_peninsular.json") as f:
+     tariffs = json.load(f)
+
     bill = calculate_gdmth_bill(
     energy_by_period=monthly_period_kwh,
     total_energy=monthly_total_kwh,
     demand_base=base_facturable,
-    tariffs=TARIFFS_GDMTH
+    tariffs=tariffs
 )
     print("\n📊 Consumo mensual por periodo:")
     print(monthly_period_kwh)
