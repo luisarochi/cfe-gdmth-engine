@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 
 from src.loader import load_consumption_csv
